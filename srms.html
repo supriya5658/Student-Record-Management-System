@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <style>
+        /* Styling as per your original code */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 16px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .message {
+            font-size: 16px;
+            font-weight: bold;
+            color: green;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .error {
+            color: red;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 15px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+
+            input[type="text"] {
+                font-size: 14px;
+            }
+
+            th, td {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Student Management System</h1>
+    <button onclick="showAddForm()">Add Student</button>
+    <button onclick="showAllStudents()">View All Students</button>
+    <button onclick="showSearchForm()">Search Student</button>
+    <button onclick="showUpdateForm()">Update Student</button>
+    <button onclick="showDeleteForm()">Delete Student</button>
+
+    <!-- Add Student Form -->
+    <div id="addForm" style="display: none;">
+        <h3>Add Student</h3>
+        <input type="text" id="addStudentId" placeholder="Student ID">
+        <input type="text" id="addName" placeholder="Name">
+        <input type="text" id="addAge" placeholder="Age">
+        <input type="text" id="addGrade" placeholder="Grade">
+        <button onclick="addStudent()">Add</button>
+        <button onclick="cancelForm()">Cancel</button>
+    </div>
+
+    <!-- Search Student Form -->
+    <div id="searchForm" style="display: none;">
+        <h3>Search Student</h3>
+        <input type="text" id="searchStudentId" placeholder="Student ID">
+        <button onclick="searchStudent()">Search</button>
+        <button onclick="cancelForm()">Cancel</button>
+        <div id="searchResult"></div>
+    </div>
+
+    <!-- Update Student Form -->
+    <div id="updateForm" style="display: none;">
+        <h3>Update Student</h3>
+        <input type="text" id="updateStudentId" placeholder="Student ID">
+        <input type="text" id="updateName" placeholder="New Name">
+        <input type="text" id="updateAge" placeholder="New Age">
+        <input type="text" id="updateGrade" placeholder="New Grade">
+        <button onclick="updateStudent()">Update</button>
+        <button onclick="cancelForm()">Cancel</button>
+    </div>
+
+    <!-- Delete Student Form -->
+    <div id="deleteForm" style="display: none;">
+        <h3>Delete Student</h3>
+        <input type="text" id="deleteStudentId" placeholder="Student ID">
+        <button onclick="deleteStudent()">Delete</button>
+        <button onclick="cancelForm()">Cancel</button>
+    </div>
+
+    <!-- Table for displaying all students -->
+    <div id="studentsTable" style="display: none;">
+        <h3>All Students</h3>
+        <table id="studentTable">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be inserted here dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+
+<script>
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore(app);
+
+// Show Add Student Form
+function showAddForm() {
+    document.getElementById("addForm").style.display = "block";
+    hideOtherForms(["addForm"]);
+}
+
+// Show All Students
+async function showAllStudents() {
+    let tableBody = document.getElementById("studentTable").getElementsByTagName("tbody")[0];
+    tableBody.innerHTML = ""; // Clear existing table rows
+
+    const studentsSnapshot = await db.collection("students").get();
+    studentsSnapshot.forEach(doc => {
+        let student = doc.data();
+        let row = tableBody.insertRow();
+        row.innerHTML = `<td>${doc.id}</td><td>${student.name}</td><td>${student.age}</td><td>${student.grade}</td>`;
+    });
+
+    document.getElementById("studentsTable").style.display = "block";
+    hideOtherForms(["studentsTable"]);
+}
+
+// Search for a student
+async function searchStudent() {
+    let studentId = document.getElementById("searchStudentId").value;
+    let resultDiv = document.getElementById("searchResult");
+
+    try {
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (studentDoc.exists) {
+            let student = studentDoc.data();
+            resultDiv.innerHTML = `ID: ${studentId}, Name: ${student.name}, Age: ${student.age}, Grade: ${student.grade}`;
+            resultDiv.classList.remove("error");
+        } else {
+            resultDiv.innerHTML = "Student not found.";
+            resultDiv.classList.add("error");
+        }
+    } catch (error) {
+        console.error("Error searching student: ", error);
+    }
+}
+
+// Add a student to Firestore
+async function addStudent() {
+    let studentId = document.getElementById("addStudentId").value;
+    let name = document.getElementById("addName").value;
+    let age = document.getElementById("addAge").value;
+    let grade = document.getElementById("addGrade").value;
+
+    try {
+        await db.collection("students").doc(studentId).set({
+            name: name,
+            age: age,
+            grade: grade
+        });
+        alert("Student added successfully!");
+        cancelForm();
+    } catch (error) {
+        console.error("Error adding student: ", error);
+    }
+}
+
+// Update student information
+async function updateStudent() {
+    let studentId = document.getElementById("updateStudentId").value;
+    let name = document.getElementById("updateName").value;
+    let age = document.getElementById("updateAge").value;
+    let grade = document.getElementById("updateGrade").value;
+
+    try {
+        await db.collection("students").doc(studentId).update({
+            name: name,
+            age: age,
+            grade: grade
+        });
+        alert("Student updated successfully!");
+        cancelForm();
+    } catch (error) {
+        console.error("Error updating student: ", error);
+    }
+}
+
+// Delete a student
+async function deleteStudent() {
+    let studentId = document.getElementById("deleteStudentId").value;
+
+    try {
+        await db.collection("students").doc(studentId).delete();
+        alert("Student deleted successfully!");
+        cancelForm();
+    } catch (error) {
+        console.error("Error deleting student: ", error);
+    }
+}
+
+// Cancel any form
+function cancelForm() {
+    hideOtherForms([]);
+}
+
+// Hide forms when one is being shown
+function hideOtherForms(exceptForms) {
+    let forms = ["addForm", "searchForm", "updateForm", "deleteForm", "studentsTable"];
+    forms.forEach(form => {
+        if (!exceptForms.includes(form)) {
+            document.getElementById(form).style.display = "none";
+        }
+    });
+}
+</script>
+
+</body>
+</html>
